@@ -15,7 +15,7 @@ DIR=$2
 ROOT=$(pwd)
 cd $DIR
 
-CURRENT_TAG=$(git describe --tags)
+CURRENT_TAG=$(git describe --tags --abbrev=0)
 HAS_GIT_FLOW=$(git flow version | grep AVH)
 IS_GIT_FLOW_INITIALIZED=$(grep gitflow .git/config)
 
@@ -56,10 +56,10 @@ fi
 
 # Good enough. Lets get after it.
 git fetch --all
-git checkout develop
-git pull origin develop
 git checkout master
 git pull origin master
+git checkout develop
+git pull origin develop
 git flow release start $TAG
 
 FILES=`find . -type f \( -name '.htaccess' -or -name "README*" \)`
