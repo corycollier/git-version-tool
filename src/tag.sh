@@ -15,15 +15,17 @@ DIR=$2
 ROOT=$(pwd)
 cd $DIR
 
-CURRENT=$(git describe --tag)
+CURRENT_TAG=$(git describe --tags)
+HAS_GIT_FLOW=$(git flow version | grep AVH)
+IS_GIT_FLOW_INITIALIZED=$(grep gitflow .git/config)
 
 echo $DIR
-echo $CURRENT
+echo $CURRENT_TAG
 echo $TAG
 
 # First, we do all of the sanity checks.
 # error-check: make sure we have the right version of Git Flow
-if [ $(git flow version | grep AVH) -eq 0 ]; then
+if [ -z "$HAS_GIT_FLOW" ]; then
     echo "The AVH version of git-flow is required for this script"
     exit 1
 fi
@@ -41,13 +43,13 @@ if [ ! -d .git ]; then
 fi
 
 # error-check: what if the develop branch doesn't exist
-if [ $(grep -q gitflow .git/config) -eq 0 ]; then
+if [ -z "$IS_GIT_FLOW_INITIALIZED" ]; then
     echo "The given directory [$DIR] hasn't been git flow initialized"
     exit 1
 fi
 
 # error-check: what if there are no existing tags
-if [ -z $CURRENT ]; then
+if [ -z $CURRENT_TAG ]; then
     echo "The given directory [$DIR] has no existing tags"
     exit 1
 fi
@@ -60,11 +62,15 @@ git checkout master
 git pull origin master
 git flow release start $TAG
 
-# error-check: what if the the files don't exist
-sed -i.bak -e "s/$CURRENT/$TAG/g" "$DIR/.htaccess"
-sed -i.bak -e "s/$CURRENT/$TAG/g" "$DIR/README.md"
-rm *.bak
-rm .htaccess.bak
+FILES=`find . -type f \( -name '.htaccess' -or -name "README*" \)`
+# ADMIN folder
+for file in $FILES
+do
+    echo "editing [$file]"
+    sed -i.bak -e "s/$CURRENT_TAG/$TAG/g" "$file"
+    rm "$file.bak"
+done
+
 git add -u
 git commit -m "Documenting the [$TAG] release"
 git config core.editor "echo yes"
