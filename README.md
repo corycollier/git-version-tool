@@ -1,5 +1,5 @@
-# GitLab Version Tool
+# Git Version Tool
 
-The plan here, is to write code to automate the process of accepting MRs, pulling down the latest from the develop branch (master too), and creating and releasing a new version of code from some project.
+The plan here, is to update documentation for a project, with the new release reference information, package it up to a tag, update master and develop, and send them off to the origin
 
-version 0.3.0
+version 0.4.0
