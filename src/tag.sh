@@ -10,74 +10,20 @@
 # The project must be git flow initialized already, and there must already be at least
 # 1 existing tag for the project.
 
-TAG=$1
+NEW_TAG=$1
 DIR=$2
 ROOT=$(pwd)
 cd $DIR
 
-CURRENT_TAG=$(git describe --tags --abbrev=0)
-HAS_GIT_FLOW=$(git flow version | grep AVH)
-IS_GIT_FLOW_INITIALIZED=$(grep gitflow .git/config)
+OLD_TAG=$(git describe --tags --abbrev=0)
 
-echo $DIR
-echo $CURRENT_TAG
-echo $TAG
+source "$ROOT/src/functions.sh"
+gvt_check_environment_requirements
+gvt_check_repo_requirements "$DIR"
+gvt_prepare_repository "$DIR" "$NEW_TAG"
+gvt_update_documentation "$DIR" "$OLD_TAG" "$NEW_TAG"
+gvt_commit_and_push "$DIR" "$NEW_TAG"
 
-# First, we do all of the sanity checks.
-# error-check: make sure we have the right version of Git Flow
-if [ -z "$HAS_GIT_FLOW" ]; then
-    echo "The AVH version of git-flow is required for this script"
-    exit 1
-fi
-
-# error-check: what if the folder doesn't exist
-if [ ! -d $DIR ]; then
-    echo "The given directory [$DIR] doesn't exist"
-    exit 1
-fi
-
-# error-check: what if the connection to the remote fails
-if [ ! -d .git ]; then
-    echo "The given directory [$DIR] isn't a git repository"
-    exit 1
-fi
-
-# error-check: what if the develop branch doesn't exist
-if [ -z "$IS_GIT_FLOW_INITIALIZED" ]; then
-    echo "The given directory [$DIR] hasn't been git flow initialized"
-    exit 1
-fi
-
-# error-check: what if there are no existing tags
-if [ -z $CURRENT_TAG ]; then
-    echo "The given directory [$DIR] has no existing tags"
-    exit 1
-fi
-
-# Good enough. Lets get after it.
-git fetch --all
-git checkout master
-git pull origin master
-git checkout develop
-git pull origin develop
-git flow release start $TAG
-
-FILES=`find . -type f \( -name '.htaccess' -or -name "README*" \)`
-# ADMIN folder
-for file in $FILES
-do
-    echo "editing [$file]"
-    sed -i.bak -e "s/$CURRENT_TAG/$TAG/g" "$file"
-    rm "$file.bak"
-done
-
-git add -u
-git commit -m "Documenting the [$TAG] release"
-git config core.editor "echo yes"
-git flow release finish $TAG -m "releasing [$TAG]"
-git config --unset core.editor
-git push origin --all
-git push origin --tags
-
+gvt_msg_success "Updated repository, created tag, updated documentation, committed changes, and pushed to the origin"
 # go back to where we started
 cd $ROOT
