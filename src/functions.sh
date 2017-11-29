@@ -15,15 +15,45 @@ function gvt_msg_success () {
     echo -e "\033[32m [SUCCESS] $1 \033[0m"
 }
 
+function gvt_check_argument_requirements () {
+    METHOD=$1
+    TAG=$2
+    DIR=$3
+    if [ -z "$METHOD" ]; then
+        gvt_msg_error "The method [hotfix / release] needs to be specified"
+    fi
+
+    if [ -z "$TAG" ]; then
+        gvt_msg_error "A tag must be specified is required"
+    fi
+
+    if [ -z "$DIR" ]; then
+        gvt_msg_error "The path to the project must be specified"
+    fi
+
+    METHODS=(hotfix release)
+    for method in ${METHODS[*]}
+    do
+        if [ $method = $METHOD ]; then
+            return 0
+        fi
+    done
+    gvt_msg_error "The given method [$METHOD] is not one of (hotfix, release)"
+}
+
 function gvt_check_environment_requirements () {
     HAS_GIT=$(which git)
     HAS_GIT_FLOW=$(git flow help)
-    HAS_GIT_FLOW=$(git flow version | grep AVH)
+    HAS_GIT_FLOW_VERSION=$(git flow version | grep AVH)
     if [ -z "$HAS_GIT" ]; then
         gvt_msg_error "Git is not installed on this machine"
     fi
 
     if [ -z "$HAS_GIT_FLOW" ]; then
+        gvt_msg_error "git flow is required for this."
+    fi
+
+    if [ -z "$HAS_GIT_FLOW_VERSION" ]; then
         gvt_msg_error "The AVH version of git-flow is required for this script"
     fi
 
@@ -37,6 +67,7 @@ function gvt_check_repo_requirements () {
     fi
 
     cd $DIR
+
 
     IS_GIT_FLOW_INITIALIZED=$(grep gitflow .git/config)
     OLD_TAG=$(git describe --tags --abbrev=0)
@@ -82,19 +113,17 @@ function gvt_prepare_repository () {
             gvt_msg_error "The tag you're trying to create [$NEW_TAG] already exists in [$EXISTING]"
         fi
     done
-
-    git flow release start $NEW_TAG
     return 0;
 }
 
 function gvt_update_documentation () {
     DIR=$1
+    OLD_TAG=$2
+    NEW_TAG=$3
+
     cd $DIR
     # Warn the user of what's going on
     gvt_msg_info "Updating htaccess and README files that might have the current version referenced in them."
-
-    OLD_TAG=$2
-    NEW_TAG=$3
 
     FILES=`find . -type f \( -name '.htaccess' -or -name "README.md" \)`
 
@@ -106,19 +135,21 @@ function gvt_update_documentation () {
         rm "$file.bak"
     done
 
+    git add -u
+    git commit -m "Documenting the [$TAG] release"
+
     return 0;
 }
 
 function gvt_commit_and_push () {
-    DIR=$1
+    METHOD=$1
     TAG=$2
+    DIR=$3
     cd $DIR
 
     # Wanr the user of what's going on
-    git add -u
-    git commit -m "Documenting the [$TAG] release"
     git config core.editor "echo yes"
-    git flow release finish $TAG -m "releasing [$TAG]"
+    git flow "$METHOD" finish $TAG -m "releasing [$TAG]"
     git config --unset core.editor
     git push origin --all
     git push origin --tags
