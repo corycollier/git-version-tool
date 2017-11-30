@@ -4,7 +4,6 @@
 #
 function gvt_msg_error () {
     echo -e "\033[31m [ERROR] $1 \033[0m"
-    exit 1
 }
 
 function gvt_msg_info () {
@@ -91,8 +90,9 @@ function gvt_check_repo_requirements () {
 }
 
 function gvt_prepare_repository () {
-    DIR=$1
-    NEW_TAG=$2
+    METHOD=$1
+    TAG=$2
+    DIR=$3
     cd $DIR
     # Warn the user of what's going on
     gvt_msg_info "Running git stash. If you had changes you want, run git stash pop after this is completed."
@@ -106,13 +106,11 @@ function gvt_prepare_repository () {
 
     git fsck
     git gc
-    EXISTING=$(git tag -l)
-    for tag in $EXISTING
-    do
-        if [ "$tag" = "$NEW_TAG" ]; then
-            gvt_msg_error "The tag you're trying to create [$NEW_TAG] already exists in [$EXISTING]"
-        fi
-    done
+
+    git tag -l
+
+    git flow "$METHOD" start $TAG
+
     return 0;
 }
 
@@ -156,7 +154,7 @@ function gvt_commit_and_push () {
 }
 
 
-function gvt_version_update () {
+function gvt () {
     ROOT=$(pwd)
 
     METHOD=$1
@@ -171,9 +169,12 @@ function gvt_version_update () {
     gvt_check_argument_requirements "$METHOD" "$NEW_TAG" "$DIR"
 
     gvt_check_repo_requirements "$DIR"
-    gvt_prepare_repository "$DIR" "$NEW_TAG"
 
-    git flow "$METHOD" start $NEW_TAG
+    CAN_PROCEED=$(gvt_prepare_repository "$METHOD" "$NEW_TAG" "$DIR")
+    if [ -z "$CAN_PROCEED" ]; then
+        gvt_msg_error "There are problems. Cannot continue"
+        return 1
+    fi
 
     gvt_update_documentation "$DIR" "$OLD_TAG" "$NEW_TAG"
     gvt_commit_and_push "$METHOD" "$NEW_TAG" "$DIR"
