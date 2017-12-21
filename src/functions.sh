@@ -30,13 +30,10 @@ function gvt_check_argument_requirements () {
         gvt_msg_error "The path to the project must be specified"
     fi
 
-    METHODS=(hotfix release)
-    for method in ${METHODS[*]}
-    do
-        if [ $method = $METHOD ]; then
-            return 0
-        fi
-    done
+    LEGIT_METHOD=$(echo "$METHOD" | grep -E 'hotfix|release')
+    if [ -z "$LEGIT_METHOD" ]; then
+        return 0
+    fi
     gvt_msg_error "The given method [$METHOD] is not one of (hotfix, release)"
 }
 
@@ -160,14 +157,19 @@ function gvt () {
     METHOD=$1
     NEW_TAG=$2
     DIR=$3
+    if [ -z "$DIR" ]; then
+        DIR="."
+    fi
+
 
     cd $DIR
 
     OLD_TAG=$(git describe --tags --abbrev=0)
 
     gvt_check_environment_requirements
-    gvt_check_argument_requirements "$METHOD" "$NEW_TAG" "$DIR"
-
+    if [ gvt_check_argument_requirements "$METHOD" "$NEW_TAG" "$DIR" ]; then
+        return 1
+    fi
     gvt_check_repo_requirements "$DIR"
 
     CAN_PROCEED=$(gvt_prepare_repository "$METHOD" "$NEW_TAG" "$DIR")
@@ -182,5 +184,4 @@ function gvt () {
     gvt_msg_success "Updated repository, created tag, updated documentation, committed changes, and pushed to the origin"
     # go back to where we started
     cd $ROOT
-
 }
